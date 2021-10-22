@@ -1,0 +1,9 @@
+**/.git
+**/.gitignore
+**/coverage
+**/__pycache__/*
+**/venv
+**/.tox/*
+Dockerfile
+README.md
+docker-compose.yml

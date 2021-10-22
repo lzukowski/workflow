@@ -1,0 +1,15 @@
+version: '3.9'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ${STAGE:-development}
+    volumes:
+      - .:/app
+    command: uvicorn --factory application.app:factory --host 0.0.0.0 --port 80 --reload
+    ports:
+      - 8000:80
+    environment:
+      - CONFIG_FILE=/app/config.ini
