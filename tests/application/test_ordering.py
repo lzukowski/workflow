@@ -5,12 +5,24 @@ from decimal import Decimal
 from typing import Optional, Text
 from uuid import UUID, uuid4
 
+from fastapi.testclient import TestClient
 from hypothesis import given
 from hypothesis.strategies import decimals, uuids
 from pytest import fixture, mark
 
+from tests.application.factories import (
+    ApiCreateBuyOrderRequestFactory as CreateBuyOrder,
+)
+from tests.tools import CoinDeskApiMock
+
 
 class TestOrdering:
+    @fixture(autouse=True)
+    def setup(self, api_client: TestClient, coindesk: CoinDeskApiMock):
+        self.client = api_client
+        self.coindesk = coindesk
+        self._responses = {}
+
     @fixture
     def req_id(self):
         return uuid4()
@@ -55,10 +67,16 @@ class TestOrdering:
     def given_1btc_exchange_rate(
             self, index: Decimal | float, currency: Text,
     ) -> None:
-        raise NotImplementedError
+        self.coindesk.set_current(Decimal(index), currency)
 
     def given_created_order_with(self, bitcoins: float | Decimal) -> UUID:
-        raise NotImplementedError
+        request_id = uuid4()
+        index = self.coindesk.get_bitcoin_rate("GBP")
+        self.when_creating_buy_order_with(
+            request_id, amount=float(Decimal(bitcoins) * index), currency="GBP",
+        )
+        self.assert_that_order_was_created_for(request_id)
+        return request_id
 
     def when_creating_buy_order_with(
             self,
@@ -66,19 +84,37 @@ class TestOrdering:
             amount: Optional[float | Decimal] = None,
             currency: Optional[Text] = None,
     ) -> None:
-        raise NotImplementedError
+        command_args = {}
+        if amount:
+            command_args["amount"] = float(amount)
+        if currency:
+            command_args["currency"] = currency
+
+        url = self.client.app.url_path_for("orders:create_order")
+        body = CreateBuyOrder(request_id=str(request_id), **command_args)
+        self._responses[request_id] = self.client.post(url, json=body)
 
     def assert_that_order_was_created_for(
             self,
             request_id: UUID,
             with_bitcoins: Optional[float | Decimal] = None,
     ) -> None:
-        raise NotImplementedError
+        response = self._responses[request_id]
+        assert response.status_code == 201
+
+        if with_bitcoins:
+            order_location = response.headers["Location"]
+            order = self.client.get(order_location).json()
+            assert order["bitcoins"] == float(with_bitcoins)
 
     def expect_failure_for(
             self, request_id: UUID, with_reason: Optional[Text] = None,
     ) -> None:
-        raise NotImplementedError
+        response = self._responses[request_id]
+        assert response.status_code != 201
+
+        if with_reason is not None:
+            assert response.json()["detail"] == with_reason
 
 
 def round_up(amount: float | Decimal, to_precision: int) -> Decimal:
