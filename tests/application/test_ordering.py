@@ -3,10 +3,18 @@ from __future__ import annotations
 import decimal
 from decimal import Decimal
 from typing import Optional, Text
+from uuid import uuid4
 
+from fastapi.testclient import TestClient
 from hypothesis import HealthCheck, given, settings
 from hypothesis.strategies import decimals
 from pytest import fixture, mark
+from requests import Response
+
+from tests.application.factories import (
+    ApiCreateBuyOrderRequestFactory as CreateBuyOrder,
+)
+from tests.tools import CoinDeskApiStub
 
 
 class TestOrdering:
@@ -52,28 +60,60 @@ def round_up(amount: float | Decimal, to_precision: int) -> Decimal:
 
 
 class OrderingSteps:
+    def __init__(
+            self, api_client: TestClient, coindesk: CoinDeskApiStub,
+    ) -> None:
+        self.client = api_client
+        self.coindesk = coindesk
+        self.last_response: Response | None = None
+
+    @property
+    def create_order_url(self) -> Text:
+        return self.client.app.url_path_for("orders:create_order")
+
     def given_1btc_exchange_rate(self, **rates: Decimal | float) -> None:
-        raise NotImplementedError
+        for currency, index in rates.items():
+            self.coindesk.set_current(Decimal(index), currency)
 
     def given_created_order_with(self, bitcoins: float | Decimal) -> None:
-        raise NotImplementedError
+        index = self.coindesk.get_bitcoin_rate("EUR")
+        response = self.client.post(
+            url=self.create_order_url,
+            json=CreateBuyOrder(amount=float(bitcoins * index), currency="EUR"),
+        )
+        assert response.status_code == 201
 
     def when_creating_buy_order_with(
             self,
             amount: Optional[float | Decimal] = None,
             currency: Optional[Text] = None,
     ) -> None:
-        raise NotImplementedError
+        command_args = {}
+        if amount:
+            command_args["amount"] = float(amount)
+        if currency:
+            command_args["currency"] = currency
+
+        body = CreateBuyOrder(request_id=str(uuid4()), **command_args)
+        self.last_response = self.client.post(self.create_order_url, json=body)
 
     def assert_that_order_was_created(
             self, with_bitcoins: Optional[float | Decimal] = None,
     ) -> None:
-        raise NotImplementedError
+        assert self.last_response.status_code == 201
+        if with_bitcoins:
+            order_location = self.last_response.headers["Location"]
+            order = self.client.get(order_location).json()
+            assert order["bitcoins"] == float(with_bitcoins)
 
     def expect_failure_for(self, with_reason: Optional[Text] = None) -> None:
-        raise NotImplementedError
+        assert self.last_response.status_code != 201
+        if with_reason is not None:
+            assert self.last_response.json()["detail"] == with_reason
 
 
 @fixture
-def ordering() -> OrderingSteps:
-    return OrderingSteps()
+def ordering(
+        api_client: TestClient, coindesk: CoinDeskApiStub,
+) -> OrderingSteps:
+    return OrderingSteps(api_client, coindesk)
