@@ -1,0 +1,13 @@
+[cosmic-ray]
+module-path = "src/"
+python-version = "3.9"
+timeout = 5.0
+excluded-modules = []
+test-command = "pytest"
+
+[cosmic-ray.distributor]
+name = "local"
+
+[cosmic-ray.cloning]
+method='copy'
+commands = []
