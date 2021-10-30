@@ -1,2 +1,6 @@
+factory_boy==3.2.0
+hypothesis==6.24.0
 pytest==6.2.5
 pytest-cov==3.0.0
+pytz==2021.1
+requests-mock==1.9.3
