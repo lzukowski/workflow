@@ -1,3 +1,4 @@
 FastAPI==0.70.0
 Injector==0.18.4
+returns==0.17.0
 requests==2.26.0
