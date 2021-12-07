@@ -1,7 +1,17 @@
+from unittest.mock import Mock, call
+from uuid import uuid4
+
 from injector import InstanceProvider, UnknownProvider
 from pytest import fixture, mark, raises
 
-from application.bus import Command, CommandBus, Handler
+from application.bus import (
+    Command,
+    CommandBus,
+    Event,
+    EventBus,
+    Handler,
+    Listener,
+)
 
 
 class TestCommandBus:
@@ -40,3 +50,30 @@ class TestCommandBus:
     @fixture
     def bus(self, container):
         return container.get(CommandBus)
+
+
+class TestEventBus:
+    def test_nothing_when_no_listener_for_event(self, bus, event):
+        bus.emit(event)
+
+    def test_listener_receives_event_when_emitted(self, container, bus, event):
+        listener = Mock(Listener[Event])
+        container.binder.multibind(list[Listener[Event]], to=[listener])
+
+        bus.emit(event)
+        assert listener.call_args == call(event)
+
+    def test_call_all_listeners_when_event_emitted(self, container, bus, event):
+        listeners = [Mock(Listener[Event]) for _ in range(5)]
+        container.binder.multibind(list[Listener[Event]], to=listeners)
+
+        bus.emit(event)
+        assert all(listener.call_args == call(event) for listener in listeners)
+
+    @fixture
+    def event(self) -> Event:
+        return Event(command_id=uuid4())
+
+    @fixture
+    def bus(self, container) -> EventBus:
+        return container.get(EventBus)
