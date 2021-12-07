@@ -1,7 +1,17 @@
+from decimal import Decimal
 from random import random
-from uuid import uuid4
+from unittest.mock import ANY, Mock
+from uuid import UUID, uuid4
 
-from pytest import mark
+from fastapi import FastAPI
+from injector import InstanceProvider
+from mockito import when
+from pytest import fixture, mark
+
+from currency import Currency
+from ordering import Service as OrderingService
+from ordering import commands, errors
+from ordering.queries import BuyOrdersQueries
 
 from .factories import ApiCreateBuyOrderRequestFactory as CreateBuyOrder
 
@@ -48,3 +58,70 @@ class TestCreateBuyOrderRequest:
         request = CreateBuyOrder().update(currency=currency)
         response = api_client.post(CREATE_ORDER_URL, json=request)
         assert response.status_code == 422
+
+
+class TestCreateBuyOrderController:
+    def test_201_when_created(
+            self, app, api_client, create_buy_order, order_url,
+    ):
+        response = api_client.post(CREATE_ORDER_URL, json=create_buy_order)
+        assert response.status_code == 201
+        assert response.headers["Location"] == order_url
+
+    def test_301_when_already_created(
+            self, api_client, ordering, order_id, order_url,
+    ):
+        when(ordering).create_buy_order(...).thenRaise(
+            errors.OrderAlreadyExists(order_id)
+        )
+
+        response = api_client.post(CREATE_ORDER_URL, json=CreateBuyOrder())
+
+        assert response.status_code == 301
+        assert response.headers["Location"] == order_url
+
+    def test_409_when_order_limit_exceeded(self, api_client, ordering):
+        when(ordering).create_buy_order(...).thenRaise(
+            errors.BalanceLimitExceeded(Decimal(100))
+        )
+
+        response = api_client.post(CREATE_ORDER_URL, json=CreateBuyOrder())
+
+        assert response.status_code == 409
+        assert response.json()["detail"] == "Exceeded 100BTC ordering limit"
+
+    @fixture
+    def create_buy_order(self) -> dict:
+        return CreateBuyOrder()
+
+    @fixture
+    def order_id(self) -> UUID:
+        return uuid4()
+
+    @fixture
+    def order_url(self, app: FastAPI, order_id: UUID) -> str:
+        return app.url_path_for("orders:get_order", order_id=str(order_id))
+
+    @fixture(autouse=True)
+    def ordering(
+            self, container, create_buy_order, order_id,
+    ) -> OrderingService:
+        service = Mock(spec=OrderingService)
+        container.binder.bind(OrderingService, to=InstanceProvider(service))
+        queries = Mock(spec=BuyOrdersQueries)
+        container.binder.bind(BuyOrdersQueries, to=InstanceProvider(queries))
+
+        request_id = UUID(hex=create_buy_order["request_id"])
+        when(queries).get_order_id(request_id).thenReturn(order_id)
+        when(service).create_buy_order(
+            commands.CreateBuyOrder.construct(
+                id=request_id,
+                amount=(
+                    Decimal(create_buy_order["amount"])
+                    .quantize(Decimal(10) ** -4)
+                ),
+                currency=Currency[create_buy_order["currency"]],
+                timestamp=ANY,
+            )
+        ).thenReturn(order_id)
+        return service
