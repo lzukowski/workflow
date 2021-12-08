@@ -1,10 +1,3 @@
-from enum import Enum
-
-
-class Currency(str, Enum):
-    GBP = "GBP"
-    EUR = "EUR"
-    USD = "USD"
-
+from .types import Currency
 
 __all__ = ["Currency"]

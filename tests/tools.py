@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import decimal
 from contextlib import contextmanager
 from datetime import datetime
 from decimal import Decimal
@@ -77,3 +80,8 @@ class CoinDeskApiStub:
     def set_current(self, rate: Decimal, for_currency: CURRENCIES) -> None:
         self._index[for_currency] = rate
         self._mark_as_updated()
+
+
+def round_up(amount: float | Decimal, to_precision: int) -> Decimal:
+    exp = Decimal(10) ** -to_precision
+    return Decimal(amount).quantize(exp, rounding=decimal.ROUND_UP)

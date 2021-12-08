@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import decimal
 from decimal import Decimal
 from typing import Optional, Text
 from uuid import uuid4
@@ -14,7 +13,7 @@ from requests import Response
 from tests.application.factories import (
     ApiCreateBuyOrderRequestFactory as CreateBuyOrder,
 )
-from tests.tools import CoinDeskApiStub
+from tests.tools import CoinDeskApiStub, round_up
 
 
 class TestOrdering:
@@ -52,11 +51,6 @@ class TestOrdering:
         ordering.assert_that_order_was_created(
             with_bitcoins=round_up(paid/exchange_rate, to_precision=8),
         )
-
-
-def round_up(amount: float | Decimal, to_precision: int) -> Decimal:
-    exp = Decimal(10) ** -to_precision
-    return Decimal(amount).quantize(exp, rounding=decimal.ROUND_UP)
 
 
 class OrderingSteps:
