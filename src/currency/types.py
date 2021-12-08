@@ -13,3 +13,7 @@ class Currency(str, Enum):
 
 def BTC(value: Decimal | float) -> Decimal:
     return Decimal(value).quantize(Decimal(10) ** -8, decimal.ROUND_UP)
+
+
+def Fiat(value: Decimal | float) -> Decimal:
+    return Decimal(value).quantize(Decimal(10) ** -4)
