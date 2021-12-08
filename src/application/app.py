@@ -13,7 +13,7 @@ def create_app(container: Injector) -> FastAPI:
     settings = container.get(Settings)
     logging.config.fileConfig(settings.config, disable_existing_loggers=False)
     container.binder.install(APIModule)
-    container.binder.install(OrderingModule)
+    container.binder.install(OrderingModule(settings.ordered_btc_limit))
     return container.get(FastAPI)
 
 

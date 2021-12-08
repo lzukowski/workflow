@@ -14,3 +14,4 @@ services:
     environment:
       - CONFIG_FILE=/app/config.ini
       - COINDESK_API_URL=https://api.coindesk.com/v1/
+      - ORDERED_BTC_LIMIT=100
