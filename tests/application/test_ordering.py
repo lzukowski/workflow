@@ -38,6 +38,7 @@ class TestOrdering:
         ordering.expect_failure_for("Exceeded 100BTC ordering limit")
 
     @mark.xfail(raises=NotImplementedError, strict=True)
+    @mark.slow
     @given(
         paid=decimals(min_value=0.0001, max_value=999.9999, places=4),
         exchange_rate=decimals(min_value=20_000, max_value=90_000, places=4),

@@ -12,7 +12,7 @@ from hypothesis import HealthCheck, given, settings
 from hypothesis.strategies import decimals
 from injector import Injector
 from mockito import when
-from pytest import approx, fixture, raises
+from pytest import approx, fixture, mark, raises
 
 import ordering.db
 from application.bus import Event
@@ -58,6 +58,7 @@ class TestOrderingService:
         paid=decimals(min_value=0.0001, max_value=999_999.9999, places=4),
         exchange_rate=decimals(min_value=20_000, max_value=90_000, places=4),
     )
+    @mark.slow
     def test_btc_are_round_up_to_8_decimal_digits_when_buying(
             self, paid: Decimal, exchange_rate: Decimal, ordering,
     ):
