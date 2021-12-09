@@ -3,7 +3,7 @@ module-path = "src/"
 python-version = "3.9"
 timeout = 5.0
 excluded-modules = []
-test-command = "pytest"
+test-command = "pytest --skip-slow"
 
 [cosmic-ray.distributor]
 name = "local"

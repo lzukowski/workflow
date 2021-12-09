@@ -1,10 +1,27 @@
 from fastapi import FastAPI
 from injector import Injector
-from pytest import fixture
+from pytest import fixture, mark
 
 from application.app import create_app
 from application.settings import Settings
 from tests.tools import CoinDeskApiStub
+
+
+def pytest_addoption(parser):
+    parser.addoption("--skip-slow", action="store_true", default=False)
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "slow: mark test as slow to run")
+
+
+def pytest_collection_modifyitems(config, items):
+    if not config.getoption("--skip-slow"):
+        return
+    skip_slow = mark.skip(reason="need --runslow option to run")
+    for item in items:
+        if "slow" in item.keywords:
+            item.add_marker(skip_slow)
 
 
 @fixture
