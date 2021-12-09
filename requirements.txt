@@ -2,5 +2,6 @@ Alembic==1.7.5
 FastAPI==0.70.0
 Injector==0.18.4
 SQLAlchemy==1.4.27
+SQLAlchemy-Utils==0.37.9
 psycopg2==2.9.2
 requests==2.26.0

@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from decimal import Decimal
-from typing import ContextManager, Optional
+from typing import ContextManager, Optional, Protocol
 from uuid import UUID
 
 from application.bus import Event
@@ -15,14 +15,14 @@ class BuyOrder:
     exchange_rate: BTCRate
 
 
-class Repository:
+class Repository(Protocol):
     @abstractmethod
     def lock(self) -> ContextManager[Decimal]:
         """
         Locks balance of BuyOrders.
         :return: Context manager with current balance
         """
-        raise NotImplementedError
+        ...
 
     @abstractmethod
     def create(
@@ -35,15 +35,15 @@ class Repository:
         """
         Usage: Needs locked context before creating BuyOrder.
         """
-        raise NotImplementedError
+        ...
 
     @abstractmethod
     def emit(self, event: Event) -> None:
         """
         Usage: Needs locked context before creating BuyOrder.
         """
-        raise NotImplementedError
+        ...
 
     @abstractmethod
     def get_order_id(self, for_request_id: UUID) -> Optional[UUID]:
-        raise NotImplementedError
+        ...
