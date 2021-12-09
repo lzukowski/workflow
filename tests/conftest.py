@@ -1,6 +1,9 @@
+import alembic.command
+import alembic.config
 from fastapi import FastAPI
 from injector import Injector
 from pytest import fixture, mark
+from sqlalchemy.engine import Engine
 
 from application.app import create_app
 from application.settings import Settings
@@ -44,3 +47,14 @@ def coindesk(settings: Settings) -> CoinDeskApiStub:
     coindesk_mock = CoinDeskApiStub(settings.coindesk_api_url)
     with coindesk_mock() as coindesk:
         yield coindesk
+
+
+@fixture(autouse=True)
+def db_migrate(container):
+    config = container.get(Settings).config
+    engine = container.get(Engine)
+    with engine.begin():
+        alembic.command.upgrade(alembic.config.Config(config), "head")
+    yield
+    with engine.begin():
+        alembic.command.downgrade(alembic.config.Config(config), "base")
