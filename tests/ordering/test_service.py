@@ -67,7 +67,7 @@ class TestOrderingService:
         ordering.set_exchange_rate(to=exchange_rate)
         order_id = ordering.create_buy_order(amount=paid)
 
-        expected = round_up(paid/exchange_rate, to_precision=8)
+        expected = round_up(paid/exchange_rate, precision=8)
         ordering.expect(BuyOrderCreated, bitcoins=expected, order_id=order_id)
 
 
