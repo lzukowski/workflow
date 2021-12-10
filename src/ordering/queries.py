@@ -18,6 +18,16 @@ class BuyOrder(BaseModel):
     bought_for: condecimal(decimal_places=4)
     currency: Currency
 
+    @classmethod
+    def from_db(cls, entry: DBBuyOrder) -> BuyOrder:
+        return cls(
+            id=entry.id,
+            request_id=entry.request_id,
+            bitcoins=entry.bought,
+            bought_for=entry.paid,
+            currency=entry.exchange_rate.currency,
+        )
+
 
 @inject
 class BuyOrdersQueries:
@@ -33,7 +43,12 @@ class BuyOrdersQueries:
         return (result := query.one_or_none()) and result[0]
 
     def get_order(self, order_id: UUID) -> BuyOrder | None:
-        raise NotImplementedError
+        session = self._session_maker()
+        query = session.query(DBBuyOrder).filter_by(id=order_id)
+        entry = query.one_or_none()
+        session.expunge_all()
+        session.rollback()
+        return entry and BuyOrder.from_db(entry)
 
 
 __all__ = ["BuyOrder", "BuyOrdersQueries"]

@@ -20,7 +20,6 @@ CREATE_ORDER_URL = "/orders/"
 
 
 class TestCreateBuyOrderRequest:
-    @mark.xfail(raises=NotImplementedError, strict=True)
     def test_after_creating_redirects_to_created_order(self, api_client):
         request = CreateBuyOrder()
         response = api_client.post(CREATE_ORDER_URL, json=request)

@@ -3,7 +3,7 @@ from uuid import uuid4
 from pytest import fixture
 from sqlalchemy.orm import sessionmaker
 
-from ordering.queries import BuyOrdersQueries
+from ordering.queries import BuyOrder, BuyOrdersQueries
 
 from .factories import DBBuyOrderFactory as DBBuyOrder
 
@@ -27,6 +27,31 @@ class TestGetOrderId:
         session.commit()
         session.expunge_all()
         return order_id
+
+
+class TestGetOrder:
+    def test_none_when_no_buy_order_found(self, queries):
+        assert queries.get_order(uuid4()) is None
+
+    def test_order_when_buy_order_found(self, queries, buy_order):
+        assert queries.get_order(buy_order.id) == buy_order
+
+    @fixture
+    def buy_order(self, session):
+        entry = DBBuyOrder()
+        session.add(entry)
+        session.commit()
+
+        buy_order = BuyOrder(
+            id=entry.id,
+            request_id=entry.request_id,
+            bitcoins=entry.bought,
+            bought_for=entry.paid,
+            currency=entry.exchange_rate.currency,
+        )
+
+        session.expunge_all()
+        return buy_order
 
 
 @fixture
