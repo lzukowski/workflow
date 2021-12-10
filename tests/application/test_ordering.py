@@ -50,7 +50,7 @@ class TestOrdering:
         ordering.given_1btc_exchange_rate(EUR=exchange_rate)
         ordering.when_creating_buy_order_with(paid, "EUR")
         ordering.assert_that_order_was_created(
-            with_bitcoins=round_up(paid/exchange_rate, to_precision=8),
+            with_bitcoins=round_up(paid/exchange_rate, precision=8),
         )
 
 

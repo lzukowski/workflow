@@ -91,6 +91,12 @@ class CoinDeskApiStub:
             yield
 
 
-def round_up(amount: float | Decimal, to_precision: int) -> Decimal:
-    exp = Decimal(10) ** -to_precision
-    return Decimal(amount).quantize(exp, rounding=decimal.ROUND_UP)
+def to_precision(
+        value: float | Decimal, precision: int, rounding=None,
+) -> Decimal:
+    exp = Decimal(10) ** -precision
+    return Decimal(value).quantize(exp, rounding=rounding)
+
+
+def round_up(value: float | Decimal, precision: int) -> Decimal:
+    return to_precision(value, precision, rounding=decimal.ROUND_UP)
