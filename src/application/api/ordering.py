@@ -12,25 +12,23 @@ from returns.pipeline import is_successful
 from application.bus import CommandBus
 from currency import Currency
 from ordering import commands, errors
+from ordering.queries import BuyOrder, BuyOrdersQueries
 
 from .tools import Injects
 
 router = APIRouter()
 
 
-class BuyOrder(BaseModel):
-    id: UUID
-    request_id: UUID
-    bitcoins: condecimal(decimal_places=8)
-    bought_for: condecimal(decimal_places=4)
-    currency: Currency
-
-
 @router.get(
     "/{order_id}", name="orders:get_order", response_model=BuyOrder,
+    responses={404: {"description": "Unknown order id"}}
 )
-async def get_order(order_id: UUID) -> BuyOrder:
-    raise NotImplementedError
+async def get_order(
+        order_id: UUID,
+        queries: BuyOrdersQueries = Injects(BuyOrdersQueries),
+) -> BuyOrder | Response:
+    order = queries.get_order(order_id)
+    return order or JSONResponse({"detail": "Unknown order"}, status_code=404)
 
 
 class CreateBuyOrderError(BaseModel):
