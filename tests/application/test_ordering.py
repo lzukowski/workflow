@@ -22,7 +22,6 @@ class TestOrdering:
         ordering.when_creating_buy_order_with(currency=currency)
         ordering.assert_that_order_was_created()
 
-    @mark.xfail(raises=NotImplementedError, strict=True)
     def test_created_order_uses_current_exchange_rate(self, ordering):
         ordering.given_1btc_exchange_rate(EUR=33_681.3874)
         ordering.when_creating_buy_order_with(33_681.3874, "EUR")
@@ -35,7 +34,6 @@ class TestOrdering:
         ordering.when_creating_buy_order_with(2000, "EUR")
         ordering.expect_failure_for("Exceeded 100BTC ordering limit")
 
-    @mark.xfail(raises=NotImplementedError, strict=True)
     @mark.slow
     @given(
         paid=decimals(min_value=0.0001, max_value=999.9999, places=4),
