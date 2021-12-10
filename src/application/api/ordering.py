@@ -20,9 +20,14 @@ router = APIRouter()
 
 @router.get(
     "/{order_id}", name="orders:get_order", response_model=BuyOrder,
+    responses={404: {"description": "Unknown order id"}}
 )
-async def get_order(order_id: UUID) -> BuyOrder:
-    raise NotImplementedError
+async def get_order(
+        order_id: UUID,
+        queries: BuyOrdersQueries = Injects(BuyOrdersQueries),
+) -> BuyOrder | Response:
+    order = queries.get_order(order_id)
+    return order or JSONResponse({"detail": "Unknown order"}, status_code=404)
 
 
 class CreateBuyOrderError(BaseModel):

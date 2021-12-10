@@ -12,6 +12,7 @@ from currency import Currency
 from ordering import Service as OrderingService
 from ordering import commands, errors
 from ordering.queries import BuyOrdersQueries
+from tests.ordering.factories import BuyOrderFactory as BuyOrder
 
 from .factories import ApiCreateBuyOrderRequestFactory as CreateBuyOrder
 
@@ -124,3 +125,31 @@ class TestCreateBuyOrderController:
             )
         ).thenReturn(order_id)
         return service
+
+
+class TestGetBuyOrderController:
+    def test_404_when_no_order(self, api_client):
+        response = api_client.get(f"/orders/{uuid4()}")
+        assert response.status_code == 404
+
+    def test_order_data_when_order_exists(self, api_client, order):
+        response = api_client.get(f"/orders/{order.id}")
+        assert response.json() == {
+            "id": str(order.id),
+            "request_id": str(order.request_id),
+            "bitcoins": float(order.bitcoins),
+            "bought_for": float(order.bought_for),
+            "currency": order.currency.name,
+        }
+
+    @fixture
+    def order(self) -> BuyOrder:
+        return BuyOrder()
+
+    @fixture(autouse=True)
+    def queries(self, container, order) -> BuyOrdersQueries:
+        queries = Mock(BuyOrdersQueries)
+        when(queries).get_order(...).thenReturn(None)
+        when(queries).get_order(order.id).thenReturn(order)
+        container.binder.bind(BuyOrdersQueries, to=InstanceProvider(queries))
+        return queries

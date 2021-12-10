@@ -32,5 +32,8 @@ class BuyOrdersQueries:
         )
         return (result := query.one_or_none()) and result[0]
 
+    def get_order(self, order_id: UUID) -> BuyOrder | None:
+        raise NotImplementedError
+
 
 __all__ = ["BuyOrder", "BuyOrdersQueries"]

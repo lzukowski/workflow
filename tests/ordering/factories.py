@@ -24,3 +24,14 @@ class DBBuyOrderFactory(Factory):
     paid = Faker("pydecimal", right_digits=4, min_value=1, max_value=400)
     bought = Faker("pydecimal", right_digits=8, min_value=1, max_value=10)
     exchange_rate = SubFactory(BTCRateFactory)
+
+
+class BuyOrderFactory(Factory):
+    class Meta:
+        model = ordering.queries.BuyOrder
+
+    id = Faker("uuid4")
+    request_id = Faker("uuid4")
+    bitcoins = Faker("pydecimal", right_digits=8, min_value=0, max_value=99)
+    bought_for = Faker("pydecimal", right_digits=4, min_value=1, max_value=9999)
+    currency = FuzzyChoice(Currency)
