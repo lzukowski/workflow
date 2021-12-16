@@ -28,7 +28,6 @@ class TestCreateBuyOrderRequest:
         order = api_client.get(order_url).json()
         assert order["request_id"] == request["request_id"]
 
-    @mark.xfail(raises=NotImplementedError, strict=True)
     def test_creating_order_is_idempotent(self, api_client):
         request = CreateBuyOrder()
         first = api_client.post(CREATE_ORDER_URL, json=request)

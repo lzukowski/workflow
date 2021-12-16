@@ -17,7 +17,6 @@ from tests.tools import CoinDeskApiStub, round_up
 
 
 class TestOrdering:
-    @mark.xfail(raises=NotImplementedError, strict=True)
     @mark.parametrize("currency", ["EUR", "GBP", "USD"])
     def test_creating_an_order(self, currency: Text, ordering):
         ordering.when_creating_buy_order_with(currency=currency)
@@ -29,7 +28,6 @@ class TestOrdering:
         ordering.when_creating_buy_order_with(33_681.3874, "EUR")
         ordering.assert_that_order_was_created(with_bitcoins=1)
 
-    @mark.xfail(raises=NotImplementedError, strict=True)
     def test_summary_amount_of_orders_cannot_exceed_100btc(self, ordering):
         ordering.given_1btc_exchange_rate(EUR=100)
         ordering.given_created_order_with(bitcoins=50)
