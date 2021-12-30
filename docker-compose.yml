@@ -8,9 +8,27 @@ services:
       target: ${STAGE:-development}
     volumes:
       - .:/app
-    command: uvicorn --factory application.app:factory --host 0.0.0.0 --port 80 --reload
+    command:
+      - /bin/bash
+      - -c
+      - |
+        alembic -c config.ini upgrade head
+        uvicorn --factory application.app:factory --host 0.0.0.0 --port 80 --reload
     ports:
       - 8000:80
     environment:
       - CONFIG_FILE=/app/config.ini
       - COINDESK_API_URL=https://api.coindesk.com/v1/
+      - ORDERED_BTC_LIMIT=100
+      - DATABASE_URL=postgresql://workflow:workflow@db:5432/workflow
+    depends_on:
+      - db
+
+  db:
+    image: postgres:13-alpine
+    expose:
+      - 5432
+    environment:
+      - POSTGRES_USER=workflow
+      - POSTGRES_PASSWORD=workflow
+      - POSTGRES_DB=workflow

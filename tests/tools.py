@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import decimal
 from contextlib import contextmanager
 from datetime import datetime
 from decimal import Decimal
@@ -23,7 +26,7 @@ class CoinDeskApiStub:
         self._mark_as_updated(at=when_last_update)
 
     @contextmanager
-    def __call__(self) -> "CoinDeskApiStub":
+    def __call__(self) -> CoinDeskApiStub:
         with requests_mock.mock(real_http=True) as http:
             http.get(
                 urljoin(self._url, "bpi/currentprice.json"),
@@ -77,3 +80,23 @@ class CoinDeskApiStub:
     def set_current(self, rate: Decimal, for_currency: CURRENCIES) -> None:
         self._index[for_currency] = rate
         self._mark_as_updated()
+
+    @contextmanager
+    def temporal_issue(self, status_code: int) -> None:
+        with requests_mock.mock(real_http=True) as http:
+            http.get(
+                urljoin(self._url, "bpi/currentprice.json"),
+                status_code=status_code,
+            )
+            yield
+
+
+def to_precision(
+        value: float | Decimal, precision: int, rounding=None,
+) -> Decimal:
+    exp = Decimal(10) ** -precision
+    return Decimal(value).quantize(exp, rounding=rounding)
+
+
+def round_up(value: float | Decimal, precision: int) -> Decimal:
+    return to_precision(value, precision, rounding=decimal.ROUND_UP)

@@ -1,10 +1,25 @@
-from enum import Enum
+from dataclasses import dataclass
+
+from injector import Module, provider
+
+from .exchange_rate import BTCRate, ExchangeRateService
+from .types import BTC, Currency, Fiat
 
 
-class Currency(str, Enum):
-    GBP = "GBP"
-    EUR = "EUR"
-    USD = "USD"
+@dataclass
+class CurrencyModule(Module):
+    coindesk_url: str
+
+    @provider
+    def service(self) -> ExchangeRateService:
+        return ExchangeRateService(self.coindesk_url)
 
 
-__all__ = ["Currency"]
+__all__ = [
+    "BTC",
+    "BTCRate",
+    "Currency",
+    "CurrencyModule",
+    "ExchangeRateService",
+    "Fiat",
+]

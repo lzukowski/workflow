@@ -5,6 +5,11 @@ on: push
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://workflow:workflow@localhost:5432/workflow
+      POSTGRES_USER: workflow
+      POSTGRES_PASSWORD: workflow
+      POSTGRES_DB: workflow
     strategy:
       matrix:
         python-version: [3.9]
@@ -23,13 +28,14 @@ jobs:
           pip install tox
           tox -e py${{ matrix.python-version }} --notest
 
+      - name: Run DB
+        run: docker-compose run -p 5432:5432 -d db
+
       - name: Tests Python ${{ matrix.python-version }}
-        run: |
-          tox -e py${{ matrix.python-version }}
+        run: tox -e py${{ matrix.python-version }}
 
       - name: Mutation Tests
-        run: |
-          tox -e cosmic_ray
+        run: tox -e cosmic_ray
 
       - name: Archive mutation raport
         uses: actions/upload-artifact@v2
@@ -39,5 +45,7 @@ jobs:
           retention-days: 1
 
       - name: CodeStyle
-        run: |
-          tox -e codestyle -e flake8
+        run: tox -e codestyle -e flake8
+
+      - name: Stop DB
+        run: docker-compose stop
