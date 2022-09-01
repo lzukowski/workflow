@@ -6,7 +6,7 @@ from injector import Module, provider, Binder, ClassProvider, InstanceProvider
 
 from application.bus import Handler
 
-from . import commands, db, errors, events, queries
+from . import commands, db, errors, events, service, queries
 from .commands import CreateBuyOrder
 from .service import Service, OrderedBTCLimit
 
@@ -17,6 +17,7 @@ class OrderingModule(Module):
 
     def configure(self, binder: Binder) -> None:
         binder.bind(OrderedBTCLimit, to=InstanceProvider(self.ordered_btc_limit))
+        binder.bind(Service, to=ClassProvider(service.OldService))
         binder.bind(db.Repository, to=ClassProvider(db.ORMRepository))
 
     @provider

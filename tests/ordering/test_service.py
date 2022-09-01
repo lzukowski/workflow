@@ -16,6 +16,7 @@ from pytest import approx, fixture, mark, raises
 from application.bus import Event, EventBus, Listener
 from currency import BTCRate, Currency, ExchangeRateService
 from ordering import Service, OrderedBTCLimit
+from ordering.service import OldService
 from ordering.db import BuyOrder, Repository
 from ordering.errors import BalanceLimitExceeded, OrderAlreadyExists
 from ordering.events import BuyOrderCreated
@@ -119,7 +120,7 @@ class OrderingSteps:
 
     @property
     def _service(self) -> Service:
-        return self._container.get(Service)
+        return self._container.get(OldService)
 
     def set_limit_on_ordered_btc(self, to: Decimal | float) -> None:
         limit = Decimal(to).quantize(Decimal(10) ** -8)

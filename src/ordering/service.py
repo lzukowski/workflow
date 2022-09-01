@@ -1,6 +1,6 @@
 import logging
 from decimal import Decimal
-from typing import NewType
+from typing import NewType, Protocol
 
 from injector import inject
 
@@ -17,8 +17,13 @@ log = logging.getLogger(__name__)
 OrderedBTCLimit = NewType('OrderedBTCLimit', Decimal)
 
 
+class Service(Protocol):
+    def create_buy_order(self, command: CreateBuyOrder) -> None:
+        ...
+
+
 @inject
-class Service:
+class OldService(Service):
     def __init__(
             self,
             ordered_btc_limit: OrderedBTCLimit,
