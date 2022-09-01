@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from contextlib import contextmanager
 from datetime import timedelta
 from decimal import Decimal
@@ -10,33 +9,31 @@ from uuid import UUID, uuid4
 
 from hypothesis import HealthCheck, given, settings
 from hypothesis.strategies import decimals
-from injector import Injector
+from injector import Injector, InstanceProvider
 from mockito import when
 from pytest import approx, fixture, mark, raises
 
-import ordering.db
 from application.bus import Event
-from application.settings import Settings
-from currency import Currency, ExchangeRateService
-from ordering import Service
-from ordering.db import BuyOrder
+from currency import BTCRate, Currency, ExchangeRateService
+from ordering import Service, OrderedBTCLimit
+from ordering.db import BuyOrder, Repository
 from ordering.errors import BalanceLimitExceeded, OrderAlreadyExists
 from ordering.events import BuyOrderCreated
-from tests.currency.factories import BTCRateFactory as BTCRate
+from tests.currency.factories import BTCRateFactory
 from tests.tools import round_up
 
 from .factories import CreateBuyOrderFactory as CreateBuyOrder
 
 
 class TestOrderingService:
-    def test_raises_when_order_already_created(self, ordering):
+    def test_raises_when_order_already_created(self, ordering: OrderingSteps):
         command = CreateBuyOrder()
         ordering.create_buy_order(command)
 
         with raises(OrderAlreadyExists):
             ordering.create_buy_order(command)
 
-    def test_raises_when_exceeding_order_limit(self, ordering):
+    def test_raises_when_exceeding_order_limit(self, ordering: OrderingSteps):
         ordering.set_limit_on_ordered_btc(0.0000_0001)
 
         with raises(BalanceLimitExceeded) as exceeded:
@@ -44,7 +41,7 @@ class TestOrderingService:
 
         assert float(exceeded.value.limit) == approx(0.0000_0001)
 
-    def test_emmit_event_when_buy_order_created(self, ordering):
+    def test_emmit_event_when_buy_order_created(self, ordering: OrderingSteps):
         cmd_id = uuid4()
         ordering.create_buy_order(command_id=cmd_id)
         ordering.expect(BuyOrderCreated, command_id=cmd_id)
@@ -60,16 +57,18 @@ class TestOrderingService:
     )
     @mark.slow
     def test_btc_are_round_up_to_8_decimal_digits_when_buying(
-            self, paid: Decimal, exchange_rate: Decimal, ordering,
+            self, paid: Decimal, exchange_rate: Decimal, ordering: OrderingSteps
     ):
         ordering.set_exchange_rate(to=exchange_rate)
-        order_id = ordering.create_buy_order(amount=paid)
+        command_id = ordering.create_buy_order(amount=paid)
 
         expected = round_up(paid/exchange_rate, precision=8)
-        ordering.expect(BuyOrderCreated, bitcoins=expected, order_id=order_id)
+        ordering.expect(
+            BuyOrderCreated, bitcoins=expected, command_id=command_id,
+        )
 
 
-class InMemoryRepository(ordering.db.Repository):
+class InMemoryRepository(Repository):
     emitted: list[Event]
 
     def __init__(self):
@@ -107,41 +106,40 @@ class InMemoryRepository(ordering.db.Repository):
 
 class OrderingSteps:
     def __init__(self, container: Injector) -> None:
-        self._repository = InMemoryRepository()
-        self._btc_limit = container.get(Settings).ordered_btc_limit
         self._container = container
+        self._repository = InMemoryRepository()
         self._exchange_rates = Mock(ExchangeRateService)
+
+        container.binder.bind(Repository, to=InstanceProvider(self._repository))
+        container.binder.bind(
+            ExchangeRateService, to=InstanceProvider(self._exchange_rates)
+        )
+        self.set_limit_on_ordered_btc(Decimal('999_999_999'))
         self.set_exchange_rate(33_234)
 
     @property
     def _service(self) -> Service:
-        return self._container.create_object(
-            Service,
-            additional_kwargs={
-                "repository": self._repository,
-                "exchange_rates": self._exchange_rates,
-                "ordered_btc_limit": self._btc_limit,
-            }
-        )
+        return self._container.get(Service)
 
     def set_limit_on_ordered_btc(self, to: Decimal | float) -> None:
-        self._btc_limit = Decimal(to).quantize(Decimal(10)**-8)
+        limit = Decimal(to).quantize(Decimal(10) ** -8)
+        self._container.binder.bind(OrderedBTCLimit, to=InstanceProvider(limit))
 
     def create_buy_order(
             self,
             command: ordering.CreateBuyOrder | None = None,
             **attributes,
-    ) -> None:
+    ) -> UUID:
         if "command_id" in attributes:
             attributes["id"] = attributes.pop("command_id")
-        self._service.create_buy_order(
-            command or CreateBuyOrder(**attributes)
-        )
+        command = command or CreateBuyOrder(**attributes)
+        self._service.create_buy_order(command)
+        return command.id
 
     def set_exchange_rate(self, to: Decimal | float | int) -> None:
         price = Decimal(to).quantize(Decimal(10) ** -4)
         for c in Currency:
-            rate = BTCRate(currency=c, price=price)
+            rate = BTCRateFactory(currency=c, price=price)
             when(self._exchange_rates).get_bitcoin_rate(c).thenReturn(rate)
 
     def expect(self, event_type: Type[Event], **event_attributes) -> None:
@@ -154,5 +152,4 @@ class OrderingSteps:
 
 @fixture
 def ordering(container) -> OrderingSteps:
-    os.environ["ORDERED_BTC_LIMIT"] = "999_999_999"
     return OrderingSteps(container)

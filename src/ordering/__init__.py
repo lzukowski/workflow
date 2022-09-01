@@ -2,33 +2,26 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import cast
 
-from injector import Injector, Module, provider
+from injector import Module, provider, Binder, ClassProvider, InstanceProvider
 
 from application.bus import Handler
 
 from . import commands, db, errors, events, queries
 from .commands import CreateBuyOrder
-from .service import Service
+from .service import Service, OrderedBTCLimit
 
 
 @dataclass
 class OrderingModule(Module):
     ordered_btc_limit: Decimal
 
-    @provider
-    def service(self, container: Injector) -> Service:
-        return container.create_object(
-            Service,
-            additional_kwargs={"ordered_btc_limit": self.ordered_btc_limit},
-        )
+    def configure(self, binder: Binder) -> None:
+        binder.bind(OrderedBTCLimit, to=InstanceProvider(self.ordered_btc_limit))
+        binder.bind(db.Repository, to=ClassProvider(db.ORMRepository))
 
     @provider
     def create_buy_order(self, ordering: Service) -> Handler[CreateBuyOrder]:
         return cast(Handler[CreateBuyOrder], ordering.create_buy_order)
-
-    @provider
-    def orm_repository(self, container: Injector) -> db.Repository:
-        return container.create_object(db.ORMRepository)
 
 
 __all__ = [
@@ -36,6 +29,7 @@ __all__ = [
     "errors",
     "events",
     "Service",
+    "OrderedBTCLimit",
     "OrderingModule",
     "queries",
 ]
