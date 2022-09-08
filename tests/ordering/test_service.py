@@ -9,11 +9,11 @@ from uuid import UUID, uuid4
 
 from hypothesis import HealthCheck, given, settings
 from hypothesis.strategies import decimals
-from injector import Injector, InstanceProvider
+from injector import Injector, InstanceProvider, inject
 from mockito import when
 from pytest import approx, fixture, mark, raises
 
-from application.bus import Event
+from application.bus import Event, EventBus, Listener
 from currency import BTCRate, Currency, ExchangeRateService
 from ordering import Service, OrderedBTCLimit
 from ordering.db import BuyOrder, Repository
@@ -68,15 +68,14 @@ class TestOrderingService:
         )
 
 
+@inject
 class InMemoryRepository(Repository):
-    emitted: list[Event]
-
-    def __init__(self):
+    def __init__(self, bus: EventBus) -> None:
         self._orders_by_req_id: dict[UUID, BuyOrder] = {}
+        self._bus = bus
 
     @contextmanager
     def lock(self) -> ContextManager[Decimal]:
-        self.emitted = []
         yield sum(order.bought for order in self._orders_by_req_id.values())
 
     def create(
@@ -97,7 +96,7 @@ class InMemoryRepository(Repository):
         return self._orders_by_req_id[request_id]
 
     def emit(self, event: Event) -> None:
-        self.emitted.append(event)
+        self._bus.emit(event)
 
     def get_order_id(self, for_request_id: UUID) -> UUID:
         order = self._orders_by_req_id.get(for_request_id)
@@ -105,12 +104,13 @@ class InMemoryRepository(Repository):
 
 
 class OrderingSteps:
+    emitted_events: list[Event]
+
     def __init__(self, container: Injector) -> None:
+        self.emitted_events = []
         self._container = container
-        self._repository = InMemoryRepository()
         self._exchange_rates = Mock(ExchangeRateService)
 
-        container.binder.bind(Repository, to=InstanceProvider(self._repository))
         container.binder.bind(
             ExchangeRateService, to=InstanceProvider(self._exchange_rates)
         )
@@ -147,9 +147,16 @@ class OrderingSteps:
             field: event_attributes.get(field) or ANY
             for field in event_type.schema()["properties"].keys()
         }
-        assert event_type.construct(**fields) in self._repository.emitted
+        assert event_type.construct(**fields) in self.emitted_events
 
 
 @fixture
 def ordering(container) -> OrderingSteps:
-    return OrderingSteps(container)
+    repository = InMemoryRepository(container.get(EventBus))
+    container.binder.bind(Repository, to=InstanceProvider(repository))
+    steps = OrderingSteps(container)
+    container.binder.multibind(
+        list[Listener[BuyOrderCreated]],
+        to=[steps.emitted_events.append],
+    )
+    return steps
