@@ -3,19 +3,22 @@ from __future__ import annotations
 from datetime import timedelta
 from decimal import Decimal
 from typing import Type
-from unittest.mock import ANY, Mock
+from unittest.mock import ANY, Mock, Base
 from uuid import UUID, uuid4
 
+from event_sourcery import Repository, get_event_store
 from hypothesis import HealthCheck, given, settings
 from hypothesis.strategies import decimals
 from injector import Injector, InstanceProvider
 from mockito import when
 from pytest import approx, fixture, mark, raises
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from application.bus import Event, Listener
 from currency import Currency, ExchangeRateService
 from ordering import Service, OrderedBTCLimit
-from ordering.es_service import ESService
+from ordering.es_service import ESService, BuyOrder
 from ordering.errors import BalanceLimitExceeded, OrderAlreadyExists
 from ordering.events import BuyOrderCreated
 from tests.currency.factories import BTCRateFactory
@@ -25,6 +28,10 @@ from .factories import CreateBuyOrderFactory as CreateBuyOrder
 
 
 class TestESOrderingService:
+    # def test_a(self, container, engine: Engine):
+    #     session = container.get(sessionmaker)()
+    #     Base.
+
     @mark.xfail(raises=NotImplementedError, strict=True)
     def test_raises_when_order_already_created(self, ordering: OrderingSteps):
         command = CreateBuyOrder()
@@ -120,6 +127,9 @@ class OrderingSteps:
 
 @fixture
 def ordering(container) -> OrderingSteps:
+    event_store = get_event_store(container.get(Session))
+    repository = Repository[BuyOrder](event_store, BuyOrder)
+    container.binder.bind(Repository[BuyOrder], to=InstanceProvider(repository))
     container.binder.bind(Service, to=ESService)
     steps = OrderingSteps(container)
     container.binder.multibind(

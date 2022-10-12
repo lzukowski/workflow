@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from event_sourcery_sqlalchemy.models import configure_models
 from injector import Module, provider, singleton
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
@@ -22,6 +23,7 @@ class DBModule(Module):
     @provider
     @singleton
     def maker(self, engine: Engine) -> sessionmaker:
+        configure_models(Base)
         return sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
