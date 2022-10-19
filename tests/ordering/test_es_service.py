@@ -127,7 +127,8 @@ class OrderingSteps:
 
 @fixture
 def ordering(container) -> OrderingSteps:
-    event_store = get_event_store(container.get(Session))
+    session: Session = container.get(sessionmaker)()
+    event_store = get_event_store(session)
     repository = Repository[BuyOrder](event_store, BuyOrder)
     container.binder.bind(Repository[BuyOrder], to=InstanceProvider(repository))
     container.binder.bind(Service, to=ESService)
@@ -136,4 +137,5 @@ def ordering(container) -> OrderingSteps:
         list[Listener[BuyOrderCreated]],
         to=[steps.emitted_events.append],
     )
-    return steps
+    yield steps
+    session.close()

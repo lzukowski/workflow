@@ -11,6 +11,9 @@ from .transaction import Transaction
 Base = declarative_base()
 
 
+configure_models(Base)
+
+
 @dataclass
 class DBModule(Module):
     database_url: str
@@ -23,7 +26,6 @@ class DBModule(Module):
     @provider
     @singleton
     def maker(self, engine: Engine) -> sessionmaker:
-        configure_models(Base)
         return sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
