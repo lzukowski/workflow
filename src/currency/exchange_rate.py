@@ -1,7 +1,9 @@
 from datetime import datetime
+from typing import NewType
 from urllib.parse import urljoin
 
 import requests
+from injector import inject
 from pydantic import BaseModel, condecimal
 
 from .types import Currency, Fiat
@@ -18,9 +20,13 @@ class CurrentPrices(BaseModel):
     prices: dict[str, condecimal(decimal_places=8)]
 
 
+CoindeskUrl = NewType("CoindeskUrl", str)
+
+
+@inject
 class ExchangeRateService:
-    def __init__(self, url: str) -> None:
-        self._url = urljoin(url, "bpi/currentprice.json")
+    def __init__(self, url: CoindeskUrl) -> None:
+        self._url = urljoin(str(url), "bpi/currentprice.json")
 
     def get_bitcoin_rate(self, for_currency: Currency) -> BTCRate:
         current = self._get_prices()

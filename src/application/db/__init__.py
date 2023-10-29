@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from event_sourcery_sqlalchemy.models import configure_models
 from injector import Module, provider, singleton
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
@@ -8,6 +9,9 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from .transaction import Transaction
 
 Base = declarative_base()
+
+
+configure_models(Base)
 
 
 @dataclass
